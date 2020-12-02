@@ -34,19 +34,11 @@ fn validate2(entry: &Entry) -> bool {
     (ch1 == ch && ch2 != ch) || (ch1 != ch && ch2 == ch)
 }
 
-fn count_valid1(db: &[Entry]) -> usize {
-    db.iter().filter(|e| validate1(e)).count()
-}
-
-fn count_valid2(db: &[Entry]) -> usize {
-    db.iter().filter(|e| validate2(e)).count()
-}
-
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let pat = Regex::new(r"(\d+)-(\d+) (.): (.*)").unwrap();
     let db: Vec<_> = text.lines().map(|s| parse(&pat, s)).collect();
-    println!("{}", count_valid1(&db));
-    println!("{}", count_valid2(&db));
+    println!("{}", db.iter().filter(|e| validate1(e)).count());
+    println!("{}", db.iter().filter(|e| validate2(e)).count());
 }
