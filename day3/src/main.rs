@@ -72,4 +72,14 @@ fn main() {
     let text = std::fs::read_to_string(&path).unwrap();
     let grid = parse(&text).unwrap();
     println!("{}", trees(&grid, &Pt2 { x: 3, y: 1 }));
+    
+    let slopes = vec![
+        Pt2 { x: 1, y: 1 },
+        Pt2 { x: 3, y: 1 },
+        Pt2 { x: 5, y: 1 },
+        Pt2 { x: 7, y: 1 },
+        Pt2 { x: 1, y: 2 },
+    ];
+    let prod: usize = slopes.iter().map(|slope| trees(&grid, slope)).product();
+    println!("{}", prod);
 }
