@@ -8,8 +8,8 @@ enum Tile {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Pt2 {
-    x: usize,
-    y: usize,
+    x: i64,
+    y: i64,
 }
 
 impl Pt2 {
@@ -24,8 +24,8 @@ impl Pt2 {
 #[derive(Debug)]
 struct Grid {
     tiles: HashMap<Pt2, Tile>,
-    width: usize,
-    height: usize,
+    width: i64,
+    height: i64,
 }
 
 impl Grid {
@@ -41,7 +41,7 @@ fn parse(s: &str) -> Result<Grid, String> {
     for (y, line) in s.lines().enumerate() {
         width = 0;
         for (x, ch) in line.chars().enumerate() {
-            let pt = Pt2 { x, y };
+            let pt = Pt2 { x: x as i64, y: y as i64 };
             let tile = match ch {
                 '.' => Tile::Empty,
                 '#' => Tile::Tree,
