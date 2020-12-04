@@ -34,10 +34,7 @@ impl Validator {
     fn new() -> Self {
         let mut res = HashMap::new();
         let regex = |s| Regex::new(s).unwrap();
-        res.insert("byr", regex(r"^\d{4}$"));
-        res.insert("iyr", regex(r"^\d{4}$"));
-        res.insert("eyr", regex(r"^\d{4}$"));
-        res.insert("hgt", regex(r"^\d+(cm|in)$"));
+        res.insert("hgt", regex(r"^(\d+)(cm|in)$"));
         res.insert("hcl", regex(r"^#[0-9a-f]{6}$"));
         res.insert("ecl", regex(r"^(amb|blu|brn|gry|grn|hzl|oth)$"));
         res.insert("pid", regex(r"^[0-9]{9}$"));
@@ -48,17 +45,22 @@ impl Validator {
         let valid_fields = e
             .iter()
             .filter(|(&k, _)| k != "cid")
-            .filter(|(&k, v)| self.res[k].is_match(v))
             .filter(|(&k, v)| match k {
                 "byr" => atoi(v).map_or(false, |n| n >= 1920 && n <= 2002),
                 "iyr" => atoi(v).map_or(false, |n| n >= 2010 && n <= 2020),
                 "eyr" => atoi(v).map_or(false, |n| n >= 2020 && n <= 2030),
-                "hgt" => match &v[v.len() - 2..] {
-                    "cm" => atoi(&v[..3]).map_or(false, |n| n >= 150 && n <= 193),
-                    "in" => atoi(&v[..2]).map_or(false, |n| n >= 59 && n <= 76),
-                    _ => unreachable!(),
+                "hgt" => match self.res[k].captures(v) {
+                    Some(caps) if caps.get(2).unwrap().as_str() == "cm" => {
+                        let n = atoi(caps.get(1).unwrap().as_str());
+                        n.map_or(false, |n| n >= 150 && n <= 193)
+                    }
+                    Some(caps) if caps.get(2).unwrap().as_str() == "in" => {
+                        let n = atoi(caps.get(1).unwrap().as_str());
+                        n.map_or(false, |n| n >= 59 && n <= 76)
+                    }
+                    _ => false,
                 },
-                _ => true,
+                k => self.res[k].is_match(v),
             })
             .count();
         return has_fields(e) && valid_fields == 7;
