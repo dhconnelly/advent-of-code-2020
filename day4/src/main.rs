@@ -22,54 +22,40 @@ fn has_fields(e: &Entry) -> bool {
     e.len() == 8 || (e.len() == 7 && !e.contains_key("cid"))
 }
 
+fn atoi(s: &str) -> Option<i32> {
+    i32::from_str_radix(s, 10).ok()
+}
+
 struct Validator {
     res: HashMap<&'static str, Regex>,
 }
 
 impl Validator {
     fn new() -> Self {
-        let mut m = HashMap::new();
-        m.insert("byr", Regex::new(r"^\d{4}$").unwrap());
-        m.insert("iyr", Regex::new(r"^\d{4}$").unwrap());
-        m.insert("eyr", Regex::new(r"^\d{4}$").unwrap());
-        m.insert("hgt", Regex::new(r"^\d+(cm|in)$").unwrap());
-        m.insert("hcl", Regex::new(r"^#[0-9a-f]{6}$").unwrap());
-        m.insert(
-            "ecl",
-            Regex::new(r"^(amb|blu|brn|gry|grn|hzl|oth)$").unwrap(),
-        );
-        m.insert("pid", Regex::new(r"^[0-9]{9}$").unwrap());
-        m.insert("cid", Regex::new(".*").unwrap());
-        Self { res: m }
+        let mut res = HashMap::new();
+        let regex = |s| Regex::new(s).unwrap();
+        res.insert("byr", regex(r"^\d{4}$"));
+        res.insert("iyr", regex(r"^\d{4}$"));
+        res.insert("eyr", regex(r"^\d{4}$"));
+        res.insert("hgt", regex(r"^\d+(cm|in)$"));
+        res.insert("hcl", regex(r"^#[0-9a-f]{6}$"));
+        res.insert("ecl", regex(r"^(amb|blu|brn|gry|grn|hzl|oth)$"));
+        res.insert("pid", regex(r"^[0-9]{9}$"));
+        Self { res }
     }
 
     fn is_valid(&self, e: &Entry) -> bool {
         let valid_fields = e
             .iter()
             .filter(|(&k, _)| k != "cid")
-            .filter(|(&k, v)| self.res.get(k).unwrap().is_match(v))
+            .filter(|(&k, v)| self.res[k].is_match(v))
             .filter(|(&k, v)| match k {
-                "byr" => match i32::from_str_radix(v, 10) {
-                    Ok(n) => n >= 1920 && n <= 2002,
-                    Err(_) => false,
-                },
-                "iyr" => match i32::from_str_radix(v, 10) {
-                    Ok(n) => n >= 2010 && n <= 2020,
-                    Err(_) => false,
-                },
-                "eyr" => match i32::from_str_radix(v, 10) {
-                    Ok(n) => n >= 2020 && n <= 2030,
-                    Err(_) => false,
-                },
+                "byr" => atoi(v).map_or(false, |n| n >= 1920 && n <= 2002),
+                "iyr" => atoi(v).map_or(false, |n| n >= 2010 && n <= 2020),
+                "eyr" => atoi(v).map_or(false, |n| n >= 2020 && n <= 2030),
                 "hgt" => match &v[v.len() - 2..] {
-                    "cm" => match i32::from_str_radix(&v[..3], 10) {
-                        Ok(n) => n >= 150 && n <= 193,
-                        Err(_) => false,
-                    },
-                    "in" => match i32::from_str_radix(&v[..2], 10) {
-                        Ok(n) => n >= 59 && n <= 76,
-                        Err(_) => false,
-                    },
+                    "cm" => atoi(&v[..3]).map_or(false, |n| n >= 150 && n <= 193),
+                    "in" => atoi(&v[..2]).map_or(false, |n| n >= 59 && n <= 76),
                     _ => unreachable!(),
                 },
                 _ => true,
