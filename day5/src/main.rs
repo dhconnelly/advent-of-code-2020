@@ -14,6 +14,17 @@ fn seat_id((row, col): Seat) -> i32 {
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-    let max = text.lines().map(parse_seat).map(seat_id).max().unwrap();
+    let mut ids: Vec<_> = text.lines().map(parse_seat).map(seat_id).collect();
+    ids.sort();
+
+    let max = ids[ids.len() - 1];
     println!("{}", max);
+
+    let min = ids[0];
+    let (i, _) = ids
+        .iter()
+        .enumerate()
+        .find(|(i, &id)| min + (*i as i32) != id)
+        .unwrap();
+    println!("{:?}", i as i32 + min);
 }
