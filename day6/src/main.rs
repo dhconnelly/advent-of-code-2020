@@ -1,6 +1,4 @@
-use std::collections::HashSet;
-
-type Person = HashSet<char>;
+type Person = std::collections::HashSet<char>;
 type Group = Vec<Person>;
 
 fn read_groups(s: &str) -> Vec<Group> {
