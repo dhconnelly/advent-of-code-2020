@@ -63,8 +63,7 @@ fn contained(
     memo: &mut HashMap<String, i32>,
     bag: &str,
 ) -> i32 {
-    let mut n = 0;
-    for (out, amt) in &rules[bag] {
+    rules[bag].iter().map(|(out, amt)| {
         let req = match memo.get(out) {
             Some(&req) => req,
             None => {
@@ -73,9 +72,8 @@ fn contained(
                 req
             }
         };
-        n += amt * req;
-    }
-    n
+        amt * req
+    }).sum()
 }
 
 fn main() {
