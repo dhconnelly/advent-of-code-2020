@@ -39,7 +39,7 @@ impl Parser {
     }
 }
 
-fn containing_bags(
+fn containing(
     rules: &HashMap<String, Reqs>,
     seen: &HashSet<String>,
     bag: &str,
@@ -52,10 +52,30 @@ fn containing_bags(
         .collect();
     let extra: HashSet<String> = bags
         .iter()
-        .flat_map(|bag| containing_bags(rules, &bags, bag))
+        .flat_map(|bag| containing(rules, &bags, bag))
         .collect();
     bags.extend(extra.iter().cloned());
     bags
+}
+
+fn contained(
+    rules: &HashMap<String, Reqs>,
+    memo: &mut HashMap<String, i32>,
+    bag: &str,
+) -> i32 {
+    let mut n = 0;
+    for (out, amt) in &rules[bag] {
+        let req = match memo.get(out) {
+            Some(&req) => req,
+            None => {
+                let req = contained(rules, memo, &out) + 1;
+                memo.insert(out.clone(), req);
+                req
+            }
+        };
+        n += amt * req;
+    }
+    n
 }
 
 fn main() {
@@ -64,5 +84,6 @@ fn main() {
     let parser = Parser::new();
     let rules: HashMap<String, Reqs> =
         text.lines().map(|s| parser.parse(s)).collect();
-    println!("{}", containing_bags(&rules, &HashSet::new(), "shiny gold").len());
+    println!("{}", containing(&rules, &HashSet::new(), "shiny gold").len());
+    println!("{}", contained(&rules, &mut HashMap::new(), "shiny gold"));
 }
