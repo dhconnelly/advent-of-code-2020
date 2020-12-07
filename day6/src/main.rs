@@ -15,9 +15,9 @@ fn full_person() -> Person {
     "abcdefghijklmnopqrstuvwxyz".chars().collect()
 }
 
-fn process_groups<F>(gs: &[Group], acc: Person, mut f: F) -> usize
+fn process_groups<F>(gs: &[Group], acc: Person, f: F) -> usize
 where
-    F: FnMut(&Person, &Person) -> Person,
+    F: Fn(&Person, &Person) -> Person,
 {
     gs.iter()
         .map(|g| g.iter().fold(acc.clone(), |a, p| f(&a, p)))
