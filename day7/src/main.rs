@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 type Reqs = HashMap<String, i32>;
 
@@ -38,11 +39,30 @@ impl Parser {
     }
 }
 
+fn containing_bags(
+    rules: &HashMap<String, Reqs>,
+    seen: &HashSet<String>,
+    bag: &str,
+) -> HashSet<String> {
+    let mut bags: HashSet<String> = rules
+        .iter()
+        .filter(|(_, reqs)| reqs.contains_key(bag))
+        .map(|(out, _)| out.clone())
+        .filter(|bag| !seen.contains(bag))
+        .collect();
+    let extra: HashSet<String> = bags
+        .iter()
+        .flat_map(|bag| containing_bags(rules, &bags, bag))
+        .collect();
+    bags.extend(extra.iter().cloned());
+    bags
+}
+
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let parser = Parser::new();
     let rules: HashMap<String, Reqs> =
         text.lines().map(|s| parser.parse(s)).collect();
-    println!("{:#?}", rules);
+    println!("{}", containing_bags(&rules, &HashSet::new(), "shiny gold").len());
 }
