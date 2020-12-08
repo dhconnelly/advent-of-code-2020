@@ -35,8 +35,8 @@ struct VM {
 }
 
 impl VM {
-    fn new(prog: Vec<Instr>) -> Self {
-        VM { acc: 0, pc: 0, prog }
+    fn new(prog: &[Instr]) -> Self {
+        VM { acc: 0, pc: 0, prog: prog.iter().cloned().collect() }
     }
 
     fn cur(&self) -> Instr {
@@ -49,12 +49,20 @@ impl VM {
                 self.acc += n;
                 self.pc += 1;
             }
-            Instr::Jmp(n) => {
-                self.pc += n;
-            }
-            Instr::Nop(_) => {
-                self.pc += 1;
-            }
+            Instr::Jmp(n) => self.pc += n,
+            Instr::Nop(_) => self.pc += 1,
+        }
+    }
+
+    fn done(&self) -> bool {
+        self.pc == (self.prog.len() as i32)
+    }
+
+    fn run_until_loop(&mut self) {
+        let mut seen = std::collections::HashSet::new();
+        while !seen.contains(&self.pc) && !self.done() {
+            seen.insert(self.pc);
+            self.step();
         }
     }
 }
@@ -63,11 +71,24 @@ fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let prog = read_program(&text);
-    let mut vm = VM::new(prog);
-    let mut seen = std::collections::HashSet::new();
-    while !seen.contains(&vm.pc) {
-        seen.insert(vm.pc);
-        vm.step();
-    }
+
+    let mut vm = VM::new(&prog);
+    vm.run_until_loop();
     println!("{}", vm.acc);
+
+    for i in 0..prog.len() {
+        let mut alt = prog.clone();
+        match prog[i] {
+            Instr::Acc(_) => continue,
+            Instr::Jmp(n) => alt[i] = Instr::Nop(n),
+            Instr::Nop(n) => alt[i] = Instr::Jmp(n),
+        };
+        let mut vm = VM::new(&alt);
+        vm.run_until_loop();       
+        if vm.done() {
+            println!("{}", vm.acc);
+            return;
+        }
+    }
+    panic!();
 }
