@@ -1,3 +1,7 @@
+fn atoi(s: &str) -> i32 {
+    i32::from_str_radix(s, 10).unwrap()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Instr {
     Acc(i32),
@@ -17,11 +21,6 @@ impl Instr {
             _ => unreachable!(),
         }
     }
-}
-        
-
-fn atoi(s: &str) -> i32 {
-    i32::from_str_radix(s, 10).unwrap()
 }
 
 fn read_program(s: &str) -> Vec<Instr> {
@@ -59,9 +58,9 @@ impl<'t> VM<'t> {
     }
 
     fn run_until_loop(&mut self) {
-        let mut seen = std::collections::HashSet::new();
-        while !seen.contains(&self.pc) && !self.done() {
-            seen.insert(self.pc);
+        let mut seen = vec![false; self.prog.len()];
+        while !self.done() && !seen[self.pc as usize] {
+            seen[self.pc as usize] = true;
             self.step();
         }
     }
@@ -85,7 +84,7 @@ fn main() {
             Instr::Nop(n) => Instr::Jmp(n),
         };
         let mut vm = VM::new(&prog);
-        vm.run_until_loop();       
+        vm.run_until_loop();
         if vm.done() {
             println!("{}", vm.acc);
             return;
