@@ -28,23 +28,23 @@ fn read_program(s: &str) -> Vec<Instr> {
     s.lines().map(Instr::parse).collect()
 }
 
-struct VM {
+struct VM<'t> {
     acc: i32,
     pc: i32,
-    prog: Vec<Instr>,
+    prog: &'t [Instr],
 }
 
-impl VM {
-    fn new(prog: &[Instr]) -> Self {
-        VM { acc: 0, pc: 0, prog: prog.iter().cloned().collect() }
+impl<'t> VM<'t> {
+    fn new(prog: &'t [Instr]) -> Self {
+        VM { acc: 0, pc: 0, prog }
     }
 
-    fn cur(&self) -> Instr {
-        self.prog[self.pc as usize]
+    fn cur(&self) -> &Instr {
+        &self.prog[self.pc as usize]
     }
 
     fn step(&mut self) {
-        match self.cur() {
+        match *self.cur() {
             Instr::Acc(n) => {
                 self.acc += n;
                 self.pc += 1;
@@ -76,19 +76,21 @@ fn main() {
     vm.run_until_loop();
     println!("{}", vm.acc);
 
+    let mut prog = prog;
     for i in 0..prog.len() {
-        let mut alt = prog.clone();
-        match prog[i] {
-            Instr::Acc(_) => continue,
-            Instr::Jmp(n) => alt[i] = Instr::Nop(n),
-            Instr::Nop(n) => alt[i] = Instr::Jmp(n),
+        let prev = prog[i];
+        prog[i] = match prev {
+            Instr::Acc(_) => prev,
+            Instr::Jmp(n) => Instr::Nop(n),
+            Instr::Nop(n) => Instr::Jmp(n),
         };
-        let mut vm = VM::new(&alt);
+        let mut vm = VM::new(&prog);
         vm.run_until_loop();       
         if vm.done() {
             println!("{}", vm.acc);
             return;
         }
+        prog[i] = prev;
     }
-    panic!();
+    unreachable!();
 }
