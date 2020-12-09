@@ -25,9 +25,7 @@ impl WindowedValidator {
             sums: HashMap::new(),
             cache: cache.clone(),
         };
-        for &(x, xts) in &cache {
-            validator.add_to_cache(x, xts);
-        }
+        cache.iter().for_each(|&(x, xts)| validator.add_to_cache(x, xts));
         validator
     }
 
@@ -59,6 +57,27 @@ impl WindowedValidator {
     }
 }
 
+fn find_sum_range(nums: &[i64], target: i64) -> (usize, usize) {
+    let mut sum_per_range: HashMap<(usize, usize), i64> = HashMap::new();
+    let mut range_per_sum: HashMap<i64, (usize, usize)> = HashMap::new();
+    sum_per_range.insert((0, 0), nums[0]);
+    range_per_sum.insert(nums[0], (0, 0));
+    for (i, x) in nums.iter().enumerate().skip(1) {
+        if let Some(&(from, to)) = range_per_sum.get(&target) {
+            if from != to {
+                return (from, to);
+            }
+        }
+        for from in 0..i {
+            let sum =
+                sum_per_range.get(&(from, i - 1)).unwrap_or(&nums[i - 1]) + x;
+            sum_per_range.insert((from, i), sum);
+            range_per_sum.insert(sum, (from, i));
+        }
+    }
+    unreachable!();
+}
+
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
@@ -66,7 +85,7 @@ fn main() {
     let preamble = nums.iter().copied().take(WINDOW_SIZE);
     let mut validator = WindowedValidator::new(preamble);
 
-    let invalid = nums.iter().enumerate().skip(WINDOW_SIZE).find(|(ts, x)| {
+    let invalid = *nums.iter().enumerate().skip(WINDOW_SIZE).find(|(ts, x)| {
         if validator.is_valid(**x, *ts) {
             validator.update(**x, *ts);
             false
@@ -76,23 +95,8 @@ fn main() {
     }).unwrap().1;
     println!("{}", invalid);
 
-    let mut sum_per_range: HashMap<(usize, usize), i64> = HashMap::new();
-    let mut range_per_sum: HashMap<i64, (usize, usize)> = HashMap::new();
-    sum_per_range.insert((0, 0), nums[0]);
-    range_per_sum.insert(nums[0], (0, 0));
-    for (i, x) in nums.iter().enumerate().skip(1) {
-        if let Some(&(from, to)) = range_per_sum.get(invalid) {
-            if from != to {
-                let min = nums[from..=to].iter().min().unwrap();
-                let max = nums[from..=to].iter().max().unwrap();
-                println!("{}", min + max);
-                break;
-            }
-        }
-        for from in 0..i {
-            let sum = sum_per_range.get(&(from, i-1)).unwrap_or(&nums[i-1]) + x;
-            sum_per_range.insert((from, i), sum);
-            range_per_sum.insert(sum, (from, i));
-        }
-    }
+    let (from, to) = find_sum_range(&nums, invalid);
+    let min = nums[from..=to].iter().min().unwrap();
+    let max = nums[from..=to].iter().max().unwrap();
+    println!("{}", min + max);
 }
