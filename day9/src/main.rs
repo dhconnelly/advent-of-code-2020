@@ -66,12 +66,13 @@ fn main() {
     let preamble = nums.iter().copied().take(WINDOW_SIZE);
     let mut validator = WindowedValidator::new(preamble);
 
-    for (ts, &x) in nums.iter().enumerate().skip(WINDOW_SIZE) {
-        if validator.is_valid(x, ts) {
-            validator.update(x, ts);
+    let invalid = nums.iter().enumerate().skip(WINDOW_SIZE).find(|(ts, x)| {
+        if validator.is_valid(**x, *ts) {
+            validator.update(**x, *ts);
+            false
         } else {
-            println!("{}", x);
-            break;
+            true
         }
-    }
+    });
+    println!("{}", invalid.unwrap().1);
 }
