@@ -20,30 +20,18 @@ impl WindowedValidator {
     fn new<I>(preamble: I) -> Self where I: Iterator<Item = i64> {
         let cache: VecDeque<_> =
             preamble.enumerate().map(|(i, x)| (x, i)).collect();
-        let mut sums = HashMap::new();
-        for (x, xts) in &cache {
-            for (y, yts) in &cache {
-                if x == y {
-                    continue;
-                }
-                let sum = x + y;
-                let ts1 = *xts.min(yts);
-                match sums.get(&(x + y)) {
-                    None => sums.insert(sum, ts1),
-                    Some(&ts2) if ts1 > ts2 => sums.insert(sum, ts1),
-                    Some(_) => continue,
-                };
-            }
+        let mut validator = Self {
+            size: cache.len(),
+            sums: HashMap::new(),
+            cache: cache.clone(),
+        };
+        for &(x, xts) in &cache {
+            validator.add_to_cache(x, xts);
         }
-        Self { size: cache.len(), sums, cache }
+        validator
     }
 
-    fn is_valid(&self, x: i64, ts: Timestamp) -> bool {
-        self.sums.get(&x).map_or(false, |cache_ts| ts - cache_ts <= self.size)
-    }
-
-    fn update(&mut self, x: i64, xts: Timestamp) {
-        self.cache.pop_front();
+    fn add_to_cache(&mut self, x: i64, xts: Timestamp) {
         for &(y, yts) in &self.cache {
             if x == y {
                 continue;
@@ -56,6 +44,17 @@ impl WindowedValidator {
                 Some(_) => continue,
             };
         }
+    }
+
+    fn is_valid(&self, x: i64, ts: Timestamp) -> bool {
+        self.sums
+            .get(&x)
+            .map_or(false, |cache_ts| ts - cache_ts <= self.size)
+    }
+
+    fn update(&mut self, x: i64, xts: Timestamp) {
+        self.cache.pop_front();
+        self.add_to_cache(x, xts);
         self.cache.push_back((x, xts));
     }
 }
