@@ -73,6 +73,26 @@ fn main() {
         } else {
             true
         }
-    });
-    println!("{}", invalid.unwrap().1);
+    }).unwrap().1;
+    println!("{}", invalid);
+
+    let mut sum_per_range: HashMap<(usize, usize), i64> = HashMap::new();
+    let mut range_per_sum: HashMap<i64, (usize, usize)> = HashMap::new();
+    sum_per_range.insert((0, 0), nums[0]);
+    range_per_sum.insert(nums[0], (0, 0));
+    for (i, x) in nums.iter().enumerate().skip(1) {
+        if let Some(&(from, to)) = range_per_sum.get(invalid) {
+            if from != to {
+                let min = nums[from..=to].iter().min().unwrap();
+                let max = nums[from..=to].iter().max().unwrap();
+                println!("{}", min + max);
+                break;
+            }
+        }
+        for from in 0..i {
+            let sum = sum_per_range.get(&(from, i-1)).unwrap_or(&nums[i-1]) + x;
+            sum_per_range.insert((from, i), sum);
+            range_per_sum.insert(sum, (from, i));
+        }
+    }
 }
