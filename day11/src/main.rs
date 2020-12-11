@@ -1,35 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Tile {
-    Floor,
-    Empty,
-    Occupied,
-}
-
-impl Tile {
-    fn parse(ch: char) -> Self {
-        match ch {
-            '.' => Tile::Floor,
-            '#' => Tile::Occupied,
-            'L' => Tile::Empty,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl fmt::Display for Tile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ch = match self {
-            Tile::Floor => '.',
-            Tile::Occupied => '#',
-            Tile::Empty => 'L',
-        };
-        write!(f, "{}", ch)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Pt2 {
     row: i32,
@@ -37,6 +8,10 @@ struct Pt2 {
 }
 
 impl Pt2 {
+    fn new(row: usize, col: usize) -> Self {
+        Pt2 { row: row as i32, col: col as i32 }
+    }
+
     fn nbrs(&self) -> Vec<Pt2> {
         let mut nbrs = Vec::new();
         nbrs.push(Pt2 {
@@ -76,7 +51,7 @@ impl Pt2 {
 }
 
 struct Grid {
-    m: HashMap<Pt2, Tile>,
+    m: HashMap<Pt2, char>,
     rows: usize,
     cols: usize,
 }
@@ -88,13 +63,7 @@ impl Grid {
         let mut m = HashMap::new();
         for (row, line) in s.lines().enumerate() {
             for (col, ch) in line.chars().enumerate() {
-                m.insert(
-                    Pt2 {
-                        row: row as i32,
-                        col: col as i32,
-                    },
-                    Tile::parse(ch),
-                );
+                m.insert(Pt2::new(row, col), ch);
             }
         }
         Grid { m, rows, cols }
@@ -108,11 +77,11 @@ impl Grid {
                 let occ = pt
                     .nbrs()
                     .iter()
-                    .filter(|pt2| self.m.get(pt2) == Some(&Tile::Occupied))
+                    .filter(|pt2| self.m.get(pt2) == Some(&'#'))
                     .count();
                 let tile2 = match (tile, occ) {
-                    (Tile::Empty, 0) => Tile::Occupied,
-                    (Tile::Occupied, n) if n >= 4 => Tile::Empty,
+                    ('L', 0) => '#',
+                    ('#', n) if n >= 4 => 'L',
                     _ => *tile,
                 };
                 (*pt, tile2)
@@ -125,20 +94,20 @@ impl Grid {
         }
     }
 
-    fn nbr_in_dir(&self, pt: &Pt2, slope: &(i32, i32)) -> Option<Tile> {
+    fn nbr_in_dir(&self, pt: &Pt2, slope: &(i32, i32)) -> Option<char> {
         let (drow, dcol) = slope;
         let apply = |pt: &Pt2| Pt2 {
             row: pt.row as i32 + drow,
             col: pt.col as i32 + dcol,
         };
         let mut pt2 = apply(&pt);
-        while let Some(Tile::Floor) = self.m.get(&pt2) {
+        while let Some('.') = self.m.get(&pt2) {
             pt2 = apply(&pt2);
         }
         self.m.get(&pt2).copied()
     }
 
-    fn dir_nbrs(&self, pt: &Pt2) -> Vec<Tile> {
+    fn dir_nbrs(&self, pt: &Pt2) -> Vec<char> {
         let nbrs = [
             (-1, -1),
             (-1, 0),
@@ -163,11 +132,11 @@ impl Grid {
                 let occ = self
                     .dir_nbrs(pt)
                     .iter()
-                    .filter(|t| t == &&Tile::Occupied)
+                    .filter(|t| t == &&'#')
                     .count();
                 let tile2 = match (tile, occ) {
-                    (Tile::Empty, 0) => Tile::Occupied,
-                    (Tile::Occupied, n) if n >= 5 => Tile::Empty,
+                    ('L', 0) => '#',
+                    ('#', n) if n >= 5 => 'L',
                     _ => *tile,
                 };
                 (*pt, tile2)
@@ -225,12 +194,12 @@ fn main() {
     let stable = grid.iter_until_stable(|g| g.iter());
     println!(
         "{}",
-        stable.m.values().filter(|v| **v == Tile::Occupied).count()
+        stable.m.values().filter(|v| **v == '#').count()
     );
 
     let stable = grid.iter_until_stable(|g| g.iter2());
     println!(
         "{}",
-        stable.m.values().filter(|v| **v == Tile::Occupied).count()
+        stable.m.values().filter(|v| **v == '#').count()
     );
 }
