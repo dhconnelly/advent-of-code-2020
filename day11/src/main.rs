@@ -91,24 +91,18 @@ impl Grid {
         })
     }
 
-    fn key(&self) -> String {
-        let fmt = |row, col| self.m[&Pt2::new(row as i32, col as i32)];
-        (0..self.rows)
-            .flat_map(|row| (0..self.cols).map(move |col| fmt(row, col)))
-            .collect()
-    }
-
     fn step_until_stable<F>(&self, f: F) -> Self
     where F: Fn(&Self) -> Self {
-        let mut seen = std::collections::HashSet::new();
-        let mut grid = f(self);
-        let mut k = grid.key();
-        while !seen.contains(&k) {
-            seen.insert(k);
-            grid = f(&grid);
-            k = grid.key();
+        let mut last = f(self);
+        loop {
+            let new = f(&last);
+            if last.m.iter().any(|(k, v)| new.m[k] != *v) {
+                last = new;
+                continue;
+            }
+            break;
         }
-        grid
+        last
     }
 }
 
