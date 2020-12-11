@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Pt2 {
     row: i32,
     col: i32,
@@ -24,7 +22,7 @@ const SLOPES: [Slope; 8] = [
 ];
 
 struct Grid {
-    m: HashMap<Pt2, char>,
+    m: Vec<char>,
     rows: usize,
     cols: usize,
 }
@@ -33,35 +31,52 @@ impl Grid {
     fn parse(s: &str) -> Self {
         let rows: usize = s.lines().count();
         let cols: usize = s.lines().next().unwrap().len();
-        let mut m = HashMap::new();
-        for (row, line) in s.lines().enumerate() {
-            for (col, ch) in line.chars().enumerate() {
-                m.insert(Pt2::new(row as i32, col as i32), ch);
-            }
-        }
+        let m = s.lines().flat_map(|line| line.chars()).collect();
         Grid { m, rows, cols }
     }
 
+    fn pt(&self, i: usize) -> Pt2 {
+        Pt2::new((i / self.cols) as i32, (i % self.cols) as i32)
+    }
+
     fn step<F>(&self, f: F) -> Self
-    where F: Fn(&Pt2, char) -> (Pt2, char) {
-        let m = self.m.iter().map(|(pt, tile)| f(pt, *tile)).collect();
+    where F: Fn(&Pt2, char) -> char {
+        let m = self
+            .m
+            .iter()
+            .enumerate()
+            .map(|(i, tile)| f(&self.pt(i), *tile))
+            .collect();
         let (rows, cols) = (self.rows, self.cols);
         Self { m, rows, cols }
+    }
+
+    fn in_bounds(&self, pt: &Pt2) -> bool {
+        pt.row >= 0
+            && pt.row < self.rows as i32
+            && pt.col >= 0
+            && pt.col < self.cols as i32
+    }
+
+    fn get(&self, pt: &Pt2) -> char {
+        let i = pt.row * self.cols as i32 + pt.col;
+        self.m[i as usize]
     }
 
     fn step1(&self) -> Self {
         self.step(|pt, tile| {
             let occupied = SLOPES
                 .iter()
-                .filter_map(|slope| self.m.get(&pt.add(*slope)))
-                .filter(|ch| **ch == '#')
+                .map(|slope| pt.add(*slope))
+                .filter(|q| self.in_bounds(q))
+                .filter(|q| self.get(q) == '#')
                 .count();
             let tile2 = match (tile, occupied) {
                 ('L', 0) => '#',
                 ('#', n) if n >= 4 => 'L',
                 _ => tile,
             };
-            (*pt, tile2)
+            tile2
         })
     }
 
@@ -69,10 +84,14 @@ impl Grid {
         let (drow, dcol) = slope;
         let apply = |pt: &Pt2| Pt2::new(pt.row + drow, pt.col + dcol);
         let mut pt2 = apply(&pt);
-        while let Some('.') = self.m.get(&pt2) {
+        while self.in_bounds(&pt2) && self.get(&pt2) == '.' {
             pt2 = apply(&pt2);
         }
-        self.m.get(&pt2).copied()
+        if !self.in_bounds(&pt2) {
+            None
+        } else {
+            Some(self.get(&pt2))
+        }
     }
 
     fn step2(&self) -> Self {
@@ -87,7 +106,7 @@ impl Grid {
                 ('#', n) if n >= 5 => 'L',
                 _ => tile,
             };
-            (*pt, tile2)
+            tile2
         })
     }
 
@@ -96,7 +115,7 @@ impl Grid {
         let mut last = f(self);
         loop {
             let new = f(&last);
-            if last.m.iter().any(|(k, v)| new.m[k] != *v) {
+            if last.m.iter().enumerate().any(|(i, v)| new.m[i] != *v) {
                 last = new;
                 continue;
             }
@@ -107,7 +126,7 @@ impl Grid {
 }
 
 fn occupied(g: &Grid) -> usize {
-    g.m.values().filter(|v| **v == '#').count()
+    g.m.iter().filter(|v| **v == '#').count()
 }
 
 fn main() {
