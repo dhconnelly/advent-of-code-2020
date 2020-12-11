@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Pt2 {
@@ -7,24 +6,22 @@ struct Pt2 {
     col: i32,
 }
 
+type Slope = (i32, i32);
+
 impl Pt2 {
     fn new(row: i32, col: i32) -> Self {
         Pt2 { row, col }
     }
 
-    fn nbrs(&self) -> Vec<Pt2> {
-        let mut nbrs = Vec::new();
-        nbrs.push(Pt2::new(self.row, self.col + 1));
-        nbrs.push(Pt2::new(self.row + 1, self.col));
-        nbrs.push(Pt2::new(self.row + 1, self.col + 1));
-        nbrs.push(Pt2::new(self.row - 1, self.col));
-        nbrs.push(Pt2::new(self.row - 1, self.col + 1));
-        nbrs.push(Pt2::new(self.row, self.col - 1));
-        nbrs.push(Pt2::new(self.row + 1, self.col - 1));
-        nbrs.push(Pt2::new(self.row - 1, self.col - 1));
-        nbrs
+    fn add(&self, slope: Slope) -> Self {
+        let (drow, dcol) = slope;
+        Pt2::new(self.row + drow, self.col + dcol)
     }
 }
+
+const SLOPES: [Slope; 8] = [
+    (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, 1), (1, 0), (1, -1),
+];
 
 struct Grid {
     m: HashMap<Pt2, char>,
@@ -45,26 +42,21 @@ impl Grid {
         Grid { m, rows, cols }
     }
 
-    fn iter<F>(&self, f: F) -> Self
-    where
-        F: Fn(&Pt2, char) -> (Pt2, char),
-    {
+    fn step<F>(&self, f: F) -> Self
+    where F: Fn(&Pt2, char) -> (Pt2, char) {
         let m = self.m.iter().map(|(pt, tile)| f(pt, *tile)).collect();
-        Self {
-            m,
-            rows: self.rows,
-            cols: self.cols,
-        }
+        let (rows, cols) = (self.rows, self.cols);
+        Self { m, rows, cols }
     }
 
-    fn iter1(&self) -> Self {
-        self.iter(|pt, tile| {
-            let occ = pt
-                .nbrs()
+    fn step1(&self) -> Self {
+        self.step(|pt, tile| {
+            let occupied = SLOPES
                 .iter()
-                .filter(|pt2| self.m.get(pt2) == Some(&'#'))
+                .filter_map(|slope| self.m.get(&pt.add(*slope)))
+                .filter(|ch| **ch == '#')
                 .count();
-            let tile2 = match (tile, occ) {
+            let tile2 = match (tile, occupied) {
                 ('L', 0) => '#',
                 ('#', n) if n >= 4 => 'L',
                 _ => tile,
@@ -83,27 +75,14 @@ impl Grid {
         self.m.get(&pt2).copied()
     }
 
-    fn dir_nbrs(&self, pt: &Pt2) -> Vec<char> {
-        let nbrs = [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
-            (0, 1),
-            (1, 1),
-            (1, 0),
-            (1, -1),
-        ]
-        .iter()
-        .filter_map(|slope| self.nbr_in_dir(pt, slope))
-        .collect();
-        nbrs
-    }
-
-    fn iter2(&self) -> Self {
-        self.iter(|pt, tile| {
-            let occ = self.dir_nbrs(pt).iter().filter(|t| t == &&'#').count();
-            let tile2 = match (tile, occ) {
+    fn step2(&self) -> Self {
+        self.step(|pt, tile| {
+            let occupied = SLOPES
+                .iter()
+                .filter_map(|slope| self.nbr_in_dir(pt, slope))
+                .filter(|t| *t == '#')
+                .count();
+            let tile2 = match (tile, occupied) {
                 ('L', 0) => '#',
                 ('#', n) if n >= 5 => 'L',
                 _ => tile,
@@ -112,35 +91,24 @@ impl Grid {
         })
     }
 
-    fn iter_until_stable<F>(&self, f: F) -> Self
-    where
-        F: Fn(&Self) -> Self,
-    {
+    fn key(&self) -> String {
+        let fmt = |row, col| self.m[&Pt2::new(row as i32, col as i32)];
+        (0..self.rows)
+            .flat_map(|row| (0..self.cols).map(move |col| fmt(row, col)))
+            .collect()
+    }
+
+    fn step_until_stable<F>(&self, f: F) -> Self
+    where F: Fn(&Self) -> Self {
         let mut seen = std::collections::HashSet::new();
         let mut grid = f(self);
-        loop {
-            let k = format!("{}", grid);
-            if seen.contains(&k) {
-                break;
-            }
+        let mut k = grid.key();
+        while !seen.contains(&k) {
             seen.insert(k);
             grid = f(&grid);
+            k = grid.key();
         }
         grid
-    }
-}
-
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for row in 0..self.rows {
-            for col in 0..self.cols {
-                let pt = Pt2::new(row as i32, col as i32);
-                let tile = self.m[&pt];
-                write!(f, "{}", tile)?;
-            }
-            write!(f, "\n")?;
-        }
-        Ok(())
     }
 }
 
@@ -153,9 +121,9 @@ fn main() {
     let text = std::fs::read_to_string(&path).unwrap();
     let grid = Grid::parse(&text);
 
-    let stable1 = grid.iter_until_stable(|g| g.iter1());
+    let stable1 = grid.step_until_stable(|g| g.step1());
     println!("{}", occupied(&stable1));
 
-    let stable2 = grid.iter_until_stable(|g| g.iter2());
+    let stable2 = grid.step_until_stable(|g| g.step2());
     println!("{}", occupied(&stable2));
 }
