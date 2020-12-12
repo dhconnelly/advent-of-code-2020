@@ -46,19 +46,92 @@ impl Dir {
     }
 }
 
+#[derive(Clone, Copy)]
 struct Pt2(i32, i32);
 
 impl Pt2 {
-    fn scale(&self, amt: i32) -> Pt2 {
-        Pt2(self.0 * amt, self.1 * amt)
+    fn scale(&self, amt: i32) -> Self {
+        Self(self.0 * amt, self.1 * amt)
     }
 
     fn add(&self, pt: &Self) -> Self {
-        Pt2(self.0 + pt.0, self.1 + pt.1)
+        Self(self.0 + pt.0, self.1 + pt.1)
+    }
+
+    fn sub(&self, pt: &Self) -> Self {
+        Self(self.0 - pt.0, self.1 - pt.1)
     }
 
     fn norm(&self) -> i32 {
         self.0.abs() + self.1.abs()
+    }
+
+    fn rotate(&self) -> Self {
+        let (x, y) = (self.1.abs(), self.0.abs());
+        let (xs, ys) = match (self.0.signum(), self.1.signum()) {
+            (-1, -1) => (-1, 1),
+            (-1,  0) => (0, 1),
+            (-1,  1) => (1, 1),
+            ( 0, -1) => (-1, 0),
+            ( 0,  1) => (1, 0),
+            ( 1, -1) => (-1, -1),
+            ( 1,  0) => (0, -1),
+            ( 1,  1) => (1, -1),
+            _ => unreachable!(),
+        };
+        Self(x * xs, y * ys)
+    }
+
+    fn rotate_by(&self, dir: char, amt: i32) -> Self {
+        assert!(amt % 90 == 0);
+        let n = amt / 90;
+        let mut pt = *self;
+        for _ in 0..n {
+            match dir {
+                'R' => pt = pt.rotate(),
+                'L' => pt = pt.rotate().rotate().rotate(),
+                _ => unreachable!(),
+            }
+        }
+        pt
+    }
+}
+
+struct WaypointShip {
+    waypt: Pt2,
+    loc: Pt2,
+}
+
+impl WaypointShip {
+    fn new() -> Self {
+        Self { waypt: Pt2(10, 1), loc: Pt2(0, 0) }
+    }
+
+    fn rotate(&mut self, dir: char, amt: i32) {
+        let vec = self.waypt.sub(&self.loc);
+        let vec = vec.rotate_by(dir, amt);
+        self.waypt = vec.add(&self.loc);
+    }
+
+    fn advance(&mut self, amt: i32) {
+        let vec = self.waypt.sub(&self.loc).scale(amt);
+        self.loc = self.loc.add(&vec);
+        self.waypt = self.waypt.add(&vec);
+    }
+
+    fn shift(&mut self, dir: char, amt: i32) {
+        let dir = Dir::parse(dir).slope();
+        let vec = dir.scale(amt);
+        self.waypt = self.waypt.add(&vec);
+    }
+
+    fn exec(&mut self, i: &Instr) {
+        match i.cmd {
+            'N' | 'E' | 'S' | 'W' => self.shift(i.cmd, i.amt),
+            'R' | 'L' => self.rotate(i.cmd, i.amt),
+            'F' => self.advance(i.amt),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -69,7 +142,7 @@ struct Ship {
 
 impl Ship {
     fn new() -> Self {
-        Ship { dir: Dir::East, loc: Pt2(0, 0) }
+        Self { dir: Dir::East, loc: Pt2(0, 0) }
     }
 
     fn rotate(&mut self, dir: char, amt: i32) {
@@ -105,8 +178,13 @@ impl Ship {
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-    let instrs = text.lines().map(parse);
+    let instrs: Vec<_> = text.lines().map(parse).collect();
+
     let mut ship = Ship::new();
-    instrs.for_each(|i| ship.exec(&i));
+    instrs.iter().for_each(|i| ship.exec(i));
     println!("{}", ship.loc.norm());
+
+    let mut ship2 = WaypointShip::new();
+    instrs.iter().for_each(|i| ship2.exec(i));
+    println!("{}", ship2.loc.norm());
 }
