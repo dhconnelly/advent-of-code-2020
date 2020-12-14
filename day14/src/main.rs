@@ -5,6 +5,14 @@ fn atoi(s: &str) -> u64 {
     u64::from_str_radix(s, 10).unwrap()
 }
 
+fn btoi(s: &str) -> u64 {
+    u64::from_str_radix(s, 2).unwrap()
+}
+
+fn clamp36(x: u64) -> u64 {
+    x & ((!0) >> 28)
+}
+
 struct VM {
     mask_re: Regex,
     mem_re: Regex,
@@ -26,11 +34,15 @@ impl VM {
     fn exec(&mut self, s: &str) {
         if let Some(caps) = self.mask_re.captures(s) {
             let mask = caps.get(1).unwrap().as_str();
-            println!("update mask to {}", mask);
+            let or = clamp36(btoi(&mask.replace('X', "0")));
+            let and = clamp36(btoi(&mask.replace('X', "1")));
+            self.or = or;
+            self.and = and;
         } else if let Some(caps) = self.mem_re.captures(s) {
             let addr = atoi(caps.get(1).unwrap().as_str());
             let val = atoi(caps.get(2).unwrap().as_str());
-            println!("set mem[{}] to {}", addr, val);
+            let val = (val | self.or) & self.and;
+            self.mem.insert(addr, val);
         }
     }
 }
