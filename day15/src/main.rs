@@ -2,8 +2,7 @@ fn nth(n: i64, nums: &[i64]) -> i64 {
     let mut nums = nums.iter().copied();
     let mut last_seen = std::collections::HashMap::new();
     let mut next: i64 = 0;
-    let mut i: i64 = 1;
-    while i < n {
+    for i in 1..n {
         let next0 = match nums.next() {
             Some(num) => num,
             None => next,
@@ -14,7 +13,6 @@ fn nth(n: i64, nums: &[i64]) -> i64 {
         };
         last_seen.insert(next0, i);
         next = next1;
-        i += 1;
     }
     next
 }
