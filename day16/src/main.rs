@@ -84,7 +84,9 @@ fn can_fill(rule: &Rule, idx: usize, tix: &[Ticket]) -> bool {
     true
 }
 
-fn key(bools: &[bool]) -> usize {
+type MemoKey = usize;
+
+fn key(bools: &[bool]) -> MemoKey {
     let mut key = 0;
     for (i, b) in bools.iter().enumerate() {
         if *b {
@@ -99,13 +101,13 @@ fn determine_fields_bt(
     avail: &mut [bool],
     tix: &[Ticket],
     rule_idxs: &mut Vec<usize>,
-    memo: &mut HashSet<(usize, usize)>,
+    memo: &mut HashSet<MemoKey>,
 ) -> bool {
     if rule_idxs.len() == rules.len() {
         return true;
     }
     let k = key(avail);
-    if memo.contains(&(k, rule_idxs.len())) {
+    if memo.contains(&k) {
         return false;
     }
     for (i, rule) in rules.iter().enumerate() {
@@ -117,7 +119,7 @@ fn determine_fields_bt(
             } else {
                 rule_idxs.pop();
                 avail[i] = true;
-                memo.insert((k, rule_idxs.len()));
+                memo.insert(k);
             }
         }
     }
