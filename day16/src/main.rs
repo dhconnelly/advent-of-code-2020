@@ -12,8 +12,8 @@ struct Rule {
 }
 
 impl Rule {
-    fn is_valid(&self, val: i64) -> bool {
-        self.lo1 <= val && val <= self.hi1 || self.lo2 <= val && val <= self.hi2
+    fn is_valid(&self, x: i64) -> bool {
+        self.lo1 <= x && x <= self.hi1 || self.lo2 <= x && x <= self.hi2
     }
 }
 
@@ -142,35 +142,23 @@ fn departure_product(
     rule_idxs
         .iter()
         .enumerate()
-        .filter_map(|(idx, rule_idx)| {
-            match rules[*rule_idx].name.find("departure") {
-                Some(0) => Some(ticket[idx]),
-                _ => None,
-            }
-        })
+        .filter(|(_, i)| rules[**i].name.find("departure") == Some(0))
+        .map(|(i, _)| ticket[i])
         .product()
 }
 
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-    let mut segs = text.split("\n\n");
-    let rules = parse_rules(segs.next().unwrap());
-    let mine =
-        parse_ticket(segs.next().unwrap().lines().skip(1).next().unwrap());
-    let nearby: Vec<_> = segs
-        .next()
-        .unwrap()
-        .lines()
-        .skip(1)
-        .map(parse_ticket)
-        .collect();
+    let segs: Vec<_> = text.split("\n\n").collect();
+    let rules = parse_rules(segs[0]);
+    let mine = parse_ticket(segs[1].lines().skip(1).next().unwrap());
+    let nearby: Vec<_> = segs[2].lines().skip(1).map(parse_ticket).collect();
 
     let validator = Validator::new(&rules);
     println!("{}", validator.total_error_rate(&nearby));
 
-    let mut valid = validator.valid_tickets(&nearby);
-    valid.push(mine.clone());
-    let rule_idxs = determine_fields(&rules, &valid);
+    let valid_tix = validator.valid_tickets(&nearby);
+    let rule_idxs = determine_fields(&rules, &valid_tix);
     println!("{}", departure_product(&rules, &rule_idxs, &mine));
 }
