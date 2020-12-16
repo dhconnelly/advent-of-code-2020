@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+type Ticket = Vec<i64>;
+
 #[derive(Debug, Clone)]
 struct Rule {
     name: String,
@@ -8,6 +10,12 @@ struct Rule {
     hi1: i64,
     lo2: i64,
     hi2: i64,
+}
+
+impl Rule {
+    fn is_valid(&self, val: i64) -> bool {
+        self.lo1 <= val && val <= self.hi1 || self.lo2 <= val && val <= self.hi2
+    }
 }
 
 fn atoi(s: &str) -> i64 {
@@ -37,8 +45,6 @@ fn parse_ticket(s: &str) -> Ticket {
 struct Validator {
     allowed: std::collections::HashSet<i64>,
 }
-
-type Ticket = Vec<i64>;
 
 impl Validator {
     fn new(rules: &[Rule]) -> Self {
@@ -70,8 +76,79 @@ impl Validator {
     }
 }
 
+fn can_fill(rule: &Rule, idx: usize, tix: &[Ticket]) -> bool {
+    for ticket in tix {
+        if !rule.is_valid(ticket[idx]) {
+            return false;
+        }
+    }
+    true
+}
+
+fn key(bools: &[bool]) -> usize {
+    let mut key = 0;
+    for (i, b) in bools.iter().enumerate() {
+        if *b {
+            key |= 1 << i;
+        }
+    }
+    key
+}
+
+fn determine_fields_bt(
+    rules: &[Rule],
+    avail: &mut [bool],
+    from_idx: usize,
+    tix: &[Ticket],
+    memo: &mut HashSet<(usize, usize)>,
+    rule_indices: &mut [usize],
+) -> bool {
+    if from_idx == rules.len() {
+        return true;
+    }
+    let k = key(avail);
+    if memo.contains(&(k, from_idx)) {
+        return false;
+    }
+    for (i, rule) in rules.iter().enumerate() {
+        if avail[i] && can_fill(rule, from_idx, tix) {
+            rule_indices[from_idx] = i;
+            avail[i] = false;
+            if determine_fields_bt(
+                rules,
+                avail,
+                from_idx + 1,
+                tix,
+                memo,
+                rule_indices,
+            ) {
+                return true;
+            } else {
+                memo.insert((k, from_idx));
+            }
+            avail[i] = true;
+        }
+    }
+    false
+}
+
 fn determine_fields(rules: &[Rule], tix: &[Ticket]) -> HashMap<String, usize> {
-    HashMap::new()
+    let mut rule_indices = vec![0; rules.len()];
+    assert!(determine_fields_bt(
+        rules,
+        &mut vec![true; rules.len()],
+        0,
+        tix,
+        &mut HashSet::new(),
+        &mut rule_indices
+    ));
+    rule_indices
+        .iter()
+        .enumerate()
+        .map(|(ticket_idx, rule_idx)| {
+            (rules[*rule_idx].name.clone(), ticket_idx)
+        })
+        .collect()
 }
 
 fn main() {
@@ -101,6 +178,6 @@ fn main() {
             Some(0) => Some(mine[*idx]),
             _ => None,
         })
-        .sum();
+        .product();
     println!("{}", departure);
 }
