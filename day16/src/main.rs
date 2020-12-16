@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::collections::HashSet;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct Rule {
+    name: String,
     lo1: i64,
     hi1: i64,
     lo2: i64,
@@ -13,15 +15,16 @@ fn atoi(s: &str) -> i64 {
 }
 
 fn parse_rules(s: &str) -> Vec<Rule> {
-    let re = regex::Regex::new(r".+: (\d+)-(\d+) or (\d+)-(\d+)").unwrap();
+    let re = regex::Regex::new(r"(.+): (\d+)-(\d+) or (\d+)-(\d+)").unwrap();
     s.lines()
         .map(|line| {
             let caps = re.captures(line).unwrap();
             Rule {
-                lo1: atoi(caps.get(1).unwrap().as_str()),
-                hi1: atoi(caps.get(2).unwrap().as_str()),
-                lo2: atoi(caps.get(3).unwrap().as_str()),
-                hi2: atoi(caps.get(4).unwrap().as_str()),
+                name: caps.get(1).unwrap().as_str().to_string(),
+                lo1: atoi(caps.get(2).unwrap().as_str()),
+                hi1: atoi(caps.get(3).unwrap().as_str()),
+                lo2: atoi(caps.get(4).unwrap().as_str()),
+                hi2: atoi(caps.get(5).unwrap().as_str()),
             }
         })
         .collect()
@@ -67,6 +70,10 @@ impl Validator {
     }
 }
 
+fn determine_fields(rules: &[Rule], tix: &[Ticket]) -> HashMap<String, usize> {
+    HashMap::new()
+}
+
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
@@ -84,4 +91,16 @@ fn main() {
 
     let validator = Validator::new(&rules);
     println!("{}", validator.total_error_rate(&nearby));
+
+    let mut valid = validator.valid_tickets(&nearby);
+    valid.push(mine.clone());
+    let fields = determine_fields(&rules, &valid);
+    let departure: i64 = fields
+        .iter()
+        .filter_map(|(name, idx)| match name.find("departure") {
+            Some(0) => Some(mine[*idx]),
+            _ => None,
+        })
+        .sum();
+    println!("{}", departure);
 }
