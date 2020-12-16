@@ -11,7 +11,7 @@ readme file.
 
 ## Status
 
-Updated 15 December 2020
+Updated 16 December 2020
 
 - Day 1: both parts complete
 - Day 2: both parts complete
@@ -28,5 +28,6 @@ Updated 15 December 2020
 - Day 13: both parts complete
 - Day 14: both parts complete
 - Day 15: both parts complete
+- Day 16: both parts complete
 
 ... remaining days not yet released
