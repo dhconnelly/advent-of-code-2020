@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
 
 type Ticket = Vec<i64>;
@@ -98,57 +97,56 @@ fn key(bools: &[bool]) -> usize {
 fn determine_fields_bt(
     rules: &[Rule],
     avail: &mut [bool],
-    from_idx: usize,
     tix: &[Ticket],
+    rule_idxs: &mut Vec<usize>,
     memo: &mut HashSet<(usize, usize)>,
-    rule_indices: &mut [usize],
 ) -> bool {
-    if from_idx == rules.len() {
+    if rule_idxs.len() == rules.len() {
         return true;
     }
     let k = key(avail);
-    if memo.contains(&(k, from_idx)) {
+    if memo.contains(&(k, rule_idxs.len())) {
         return false;
     }
     for (i, rule) in rules.iter().enumerate() {
-        if avail[i] && can_fill(rule, from_idx, tix) {
-            rule_indices[from_idx] = i;
+        if avail[i] && can_fill(rule, rule_idxs.len(), tix) {
+            rule_idxs.push(i);
             avail[i] = false;
-            if determine_fields_bt(
-                rules,
-                avail,
-                from_idx + 1,
-                tix,
-                memo,
-                rule_indices,
-            ) {
+            if determine_fields_bt(rules, avail, tix, rule_idxs, memo) {
                 return true;
             } else {
-                memo.insert((k, from_idx));
+                rule_idxs.pop();
+                avail[i] = true;
+                memo.insert((k, rule_idxs.len()));
             }
-            avail[i] = true;
         }
     }
     false
 }
 
-fn determine_fields(rules: &[Rule], tix: &[Ticket]) -> HashMap<String, usize> {
-    let mut rule_indices = vec![0; rules.len()];
-    assert!(determine_fields_bt(
-        rules,
-        &mut vec![true; rules.len()],
-        0,
-        tix,
-        &mut HashSet::new(),
-        &mut rule_indices
-    ));
-    rule_indices
+fn determine_fields(rules: &[Rule], tix: &[Ticket]) -> Vec<usize> {
+    let mut rule_idxs = Vec::new();
+    let mut avail = vec![true; rules.len()];
+    let mut memo = HashSet::new();
+    determine_fields_bt(rules, &mut avail, tix, &mut rule_idxs, &mut memo);
+    rule_idxs
+}
+
+fn departure_product(
+    rules: &[Rule],
+    rule_idxs: &[usize],
+    ticket: &Ticket,
+) -> i64 {
+    rule_idxs
         .iter()
         .enumerate()
-        .map(|(ticket_idx, rule_idx)| {
-            (rules[*rule_idx].name.clone(), ticket_idx)
+        .filter_map(|(idx, rule_idx)| {
+            match rules[*rule_idx].name.find("departure") {
+                Some(0) => Some(ticket[idx]),
+                _ => None,
+            }
         })
-        .collect()
+        .product()
 }
 
 fn main() {
@@ -171,13 +169,6 @@ fn main() {
 
     let mut valid = validator.valid_tickets(&nearby);
     valid.push(mine.clone());
-    let fields = determine_fields(&rules, &valid);
-    let departure: i64 = fields
-        .iter()
-        .filter_map(|(name, idx)| match name.find("departure") {
-            Some(0) => Some(mine[*idx]),
-            _ => None,
-        })
-        .product();
-    println!("{}", departure);
+    let rule_idxs = determine_fields(&rules, &valid);
+    println!("{}", departure_product(&rules, &rule_idxs, &mine));
 }
