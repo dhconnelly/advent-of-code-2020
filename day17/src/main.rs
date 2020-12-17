@@ -36,11 +36,59 @@ impl Cube {
             zdim,
         }
     }
+
+    fn active_nbrs(&self, pt: &Pt3) -> usize {
+        let mut n = 0;
+        for dx in -1..2 {
+            for dy in -1..2 {
+                for dz in &[-1, 0, 1] {
+                    let pt1 = Pt3(pt.0 + dx, pt.1 + dy, pt.2 + dz);
+                    if &pt1 == pt {
+                        continue;
+                    }
+                    if self.m.get(&pt1) == Some(&'#') {
+                        n += 1;
+                    }
+                }
+            }
+        }
+        n
+    }
+
+    fn active(&self) -> usize {
+        self.m.values().filter(|ch| ch == &&'#').count()
+    }
+
+    fn step(&self) -> Self {
+        let mut m = HashMap::new();
+        for x in self.xdim.0 - 1..self.xdim.1 + 2 {
+            for y in self.ydim.0 - 1..self.ydim.1 + 2 {
+                for z in self.zdim.0 - 1..self.zdim.1 + 2 {
+                    let pt = Pt3(x, y, z);
+                    let st = self.m.get(&pt).unwrap_or(&'.');
+                    let st1 = match (st, self.active_nbrs(&pt)) {
+                        ('#', 2) | ('#', 3) | ('.', 3) => '#',
+                        _ => '.',
+                    };
+                    m.insert(pt, st1);
+                }
+            }
+        }
+        let xdim = (self.xdim.0 - 1, self.xdim.1 + 1);
+        let ydim = (self.ydim.0 - 1, self.ydim.1 + 1);
+        let zdim = (self.zdim.0 - 1, self.zdim.1 + 1);
+        Self {
+            m,
+            xdim,
+            ydim,
+            zdim,
+        }
+    }
 }
 
 impl std::fmt::Display for Cube {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for z in self.ydim.0..=self.zdim.1 {
+        for z in self.zdim.0..=self.zdim.1 {
             println!("z={}", z);
             for y in self.ydim.0..=self.ydim.1 {
                 for x in self.xdim.0..=self.xdim.1 {
@@ -50,6 +98,7 @@ impl std::fmt::Display for Cube {
                 }
                 write!(f, "\n")?;
             }
+            write!(f, "\n")?;
         }
         Ok(())
     }
@@ -59,5 +108,6 @@ fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let cube = Cube::parse(&text);
-    println!("{}", cube);
+    let cube = cube.step().step().step().step().step().step();
+    println!("{}", cube.active())
 }
