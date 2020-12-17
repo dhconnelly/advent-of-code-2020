@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 trait Pt: Hash + Eq + Copy {
-    fn nbrs(pt: Self) -> Box<dyn Iterator<Item = Self>>;
+    fn nbrs(self) -> Box<dyn Iterator<Item = Self>>;
     fn walk_space(min: Self, max: Self) -> Box<dyn Iterator<Item = Self>>;
     fn expand_bounds(min: &Self, max: &Self) -> (Self, Self)
     where
@@ -19,7 +19,7 @@ struct Cube<T: Pt> {
 impl<T: Pt> Cube<T> {
     fn active_nbrs(&self, pt: &T) -> usize {
         let mut n = 0;
-        for pt1 in T::nbrs(*pt) {
+        for pt1 in pt.nbrs() {
             if self.m.get(&pt1) == Some(&'#') {
                 n += 1;
             }
@@ -106,13 +106,13 @@ fn parse4(s: &str) -> Cube<Pt4> {
 struct Pt3(i64, i64, i64);
 
 impl Pt for Pt3 {
-    fn nbrs(pt: Self) -> Box<dyn Iterator<Item = Self>> {
+    fn nbrs(self) -> Box<dyn Iterator<Item = Self>> {
         Box::new((-1..2).flat_map(move |dx| {
             (-1..2).flat_map(move |dy| {
                 (-1..2).filter_map(move |dz| match (dx, dy, dz) {
                     (0, 0, 0) => None,
                     (dx, dy, dz) => {
-                        Some(Self(pt.0 + dx, pt.1 + dy, pt.2 + dz))
+                        Some(Self(self.0 + dx, self.1 + dy, self.2 + dz))
                     }
                 })
             })
@@ -138,17 +138,17 @@ impl Pt for Pt3 {
 struct Pt4(i64, i64, i64, i64);
 
 impl Pt for Pt4 {
-    fn nbrs(pt: Self) -> Box<dyn Iterator<Item = Self>> {
+    fn nbrs(self) -> Box<dyn Iterator<Item = Self>> {
         Box::new((-1..2).flat_map(move |dx| {
             (-1..2).flat_map(move |dy| {
                 (-1..2).flat_map(move |dz| {
                     (-1..2).filter_map(move |dw| match (dx, dy, dz, dw) {
                         (0, 0, 0, 0) => None,
                         (dx, dy, dz, dw) => Some(Self(
-                            pt.0 + dx,
-                            pt.1 + dy,
-                            pt.2 + dz,
-                            pt.3 + dw,
+                            self.0 + dx,
+                            self.1 + dy,
+                            self.2 + dz,
+                            self.3 + dw,
                         )),
                     })
                 })
