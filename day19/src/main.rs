@@ -5,7 +5,7 @@ fn atoi(s: &str) -> usize {
     usize::from_str_radix(s, 10).unwrap()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Rule {
     Char(char),
     Seq(Vec<usize>),
@@ -97,7 +97,14 @@ fn main() {
         })
         .collect();
 
-    let matcher = Matcher::new(rules);
+    let matcher = Matcher::new(rules.clone());
+    let valid = segs[1].lines().filter(|s| matcher.matches(s)).count();
+    println!("{}", valid);
+
+    let mut rules2 = rules.clone();
+    rules2.insert(8, Rule::Alt(vec![42], vec![42, 8]));
+    rules2.insert(11, Rule::Alt(vec![42, 31], vec![42, 11, 31]));
+    let matcher = Matcher::new(rules2);
     let valid = segs[1].lines().filter(|s| matcher.matches(s)).count();
     println!("{}", valid);
 }
