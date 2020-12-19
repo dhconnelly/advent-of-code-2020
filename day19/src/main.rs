@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::collections::VecDeque;
 
 fn atoi(s: &str) -> usize {
@@ -16,9 +17,6 @@ fn parse_seq(s: &str) -> Vec<usize> {
 }
 
 fn parse_rule(s: &str) -> Rule {
-    let mut toks = s.split(": ");
-    toks.next().unwrap();
-    let s = toks.next().unwrap();
     if s.contains('"') {
         Rule::Char(s.chars().nth(s.len() - 2).unwrap())
     } else if s.contains('|') {
@@ -32,11 +30,11 @@ fn parse_rule(s: &str) -> Rule {
 }
 
 struct Matcher {
-    rules: Vec<Rule>,
+    rules: HashMap<usize, Rule>,
 }
 
 impl Matcher {
-    fn new(rules: Vec<Rule>) -> Self {
+    fn new(rules: HashMap<usize, Rule>) -> Self {
         Self { rules }
     }
 
@@ -66,7 +64,7 @@ impl Matcher {
         if q.is_empty() || s.is_empty() {
             return false;
         }
-        let first = &self.rules[q.pop_front().unwrap()];
+        let first = &self.rules[&q.pop_front().unwrap()];
         match first {
             Rule::Char(ch) => self.match_char(*ch, s, &mut q),
             Rule::Seq(seq) => self.match_seq(&seq, s, &mut q),
@@ -88,9 +86,17 @@ fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let segs: Vec<_> = text.split("\n\n").collect();
-    let mut rules_text: Vec<_> = segs[0].lines().collect();
-    rules_text.sort_by_key(|s| atoi(s.split(": ").next().unwrap()));
-    let rules: Vec<_> = rules_text.iter().map(|s| parse_rule(s)).collect();
+
+    let rules: HashMap<usize, Rule> = segs[0]
+        .lines()
+        .map(|s| {
+            let mut toks = s.split(": ");
+            let n = atoi(toks.next().unwrap());
+            let rule = parse_rule(toks.next().unwrap());
+            (n, rule)
+        })
+        .collect();
+
     let matcher = Matcher::new(rules);
     let valid = segs[1].lines().filter(|s| matcher.matches(s)).count();
     println!("{}", valid);
