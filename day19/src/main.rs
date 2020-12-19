@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::VecDeque;
 
 fn atoi(s: &str) -> usize {
     usize::from_str_radix(s, 10).unwrap()
@@ -38,33 +37,26 @@ impl Matcher {
         Self { rules }
     }
 
-    fn match_char(&self, ch: char, s: &str, q: &mut VecDeque<usize>) -> bool {
+    fn match_char(&self, ch: char, s: &str, q: &mut Vec<usize>) -> bool {
         match s.chars().next() {
             Some(ch1) if ch == ch1 => self.matches_all(&s[1..], q),
             _ => false,
         }
     }
 
-    fn match_seq(
-        &self,
-        seq: &[usize],
-        s: &str,
-        q: &mut VecDeque<usize>,
-    ) -> bool {
-        for r in seq.iter().rev() {
-            q.push_front(*r);
-        }
+    fn match_seq(&self, seq: &[usize], s: &str, q: &mut Vec<usize>) -> bool {
+        seq.iter().rev().for_each(|r| q.push(*r));
         self.matches_all(s, q)
     }
 
-    fn matches_all(&self, s: &str, mut q: &mut VecDeque<usize>) -> bool {
+    fn matches_all(&self, s: &str, mut q: &mut Vec<usize>) -> bool {
         if q.is_empty() && s.is_empty() {
             return true;
         }
         if q.is_empty() || s.is_empty() {
             return false;
         }
-        let first = &self.rules[&q.pop_front().unwrap()];
+        let first = &self.rules[&q.pop().unwrap()];
         match first {
             Rule::Char(ch) => self.match_char(*ch, s, &mut q),
             Rule::Seq(seq) => self.match_seq(&seq, s, &mut q),
@@ -76,9 +68,7 @@ impl Matcher {
     }
 
     fn matches(&self, s: &str) -> bool {
-        let mut q = VecDeque::new();
-        q.push_back(0);
-        self.matches_all(s, &mut q)
+        self.matches_all(s, &mut vec![0])
     }
 }
 
