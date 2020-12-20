@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 type Grid = Vec<Vec<char>>;
 
 #[derive(Clone)]
 struct Tile {
     id: usize,
     m: Grid,
-    flipped: bool,
-    rot: usize,
 }
 
 fn parse_grid(s: &str) -> Grid {
@@ -30,12 +26,7 @@ fn parse_tiles(s: &str) -> Vec<Tile> {
             let mut segs = chunk.split(":\n");
             let id = parse_id(segs.next().unwrap());
             let m = parse_grid(segs.next().unwrap());
-            Tile {
-                id,
-                m,
-                flipped: false,
-                rot: 0,
-            }
+            Tile { id, m }
         })
         .collect()
 }
@@ -49,11 +40,9 @@ fn rotate(tile: &mut Tile) {
         }
     }
     *tile = tile1;
-    tile.rot = tile.rot % 4;
 }
 
 fn flip(tile: &mut Tile) {
-    tile.flipped = !tile.flipped;
     for row in 0..tile.m.len() {
         let width = tile.m[row].len();
         for col in 0..width / 2 {
@@ -62,19 +51,6 @@ fn flip(tile: &mut Tile) {
             tile.m[row][width - col - 1] = tmp;
         }
     }
-}
-
-fn key(prefix: &str, tile1: &Tile, tile2: &Tile) -> String {
-    format!(
-        "{}-{}-{}-{}-{}-{}-{}",
-        prefix,
-        tile1.id,
-        tile1.flipped,
-        tile1.rot,
-        tile2.id,
-        tile2.flipped,
-        tile2.rot
-    )
 }
 
 fn fits_lr(left: &Tile, right: &Tile) -> bool {
@@ -90,57 +66,6 @@ fn fits_ab(above: &Tile, below: &Tile) -> bool {
     for col in 0..above.m[0].len() {
         if below.m[0][col] != above.m[above.m.len() - 1][col] {
             return false;
-        }
-    }
-    true
-}
-
-fn fits(
-    width: usize,
-    tiles: &[Tile],
-    tile_index: usize,
-    at_index: usize,
-    in_result: &[usize],
-    fit_memo: &mut HashMap<String, bool>,
-) -> bool {
-    let (row, col) = (at_index / width, at_index % width);
-    if row > 1 {
-        // check the top row of tiles[(row, col)] against the bottom row
-        // of in_result[(row-1, col)]
-        let below = &tiles[tile_index];
-        let above = &tiles[at_index - width];
-        let k = key("ab", below, above);
-        let v = fit_memo.get(&k);
-        if Some(&false) == v {
-            return false;
-        } else if Some(&true) == v {
-            // skip check
-        } else {
-            let v = fits_ab(above, below);
-            fit_memo.insert(k, v);
-            if !v {
-                return false;
-            }
-        }
-    }
-
-    if col > 1 {
-        // check the left col of tiles[(row, col)] against the right col
-        // of in_result[(row, col-1)]
-        let right = &tiles[tile_index];
-        let left = &tiles[in_result[at_index - 1]];
-        let k = key("lr", right, left);
-        let v = fit_memo.get(&k);
-        if Some(&false) == fit_memo.get(&k) {
-            return false;
-        } else if Some(&true) == v {
-            // skip check
-        } else {
-            let v = fits_lr(left, right);
-            fit_memo.insert(k, v);
-            if !v {
-                return false;
-            }
         }
     }
     true
@@ -190,24 +115,9 @@ mod tests {
               ...#.#.#.#",
         );
 
-        let mut left = Tile {
-            m: left,
-            id: 1,
-            rot: 0,
-            flipped: false,
-        };
-        let mut right = Tile {
-            m: right,
-            id: 2,
-            rot: 0,
-            flipped: false,
-        };
-        let mut below = Tile {
-            m: below,
-            id: 3,
-            rot: 0,
-            flipped: false,
-        };
+        let mut left = Tile { m: left, id: 1 };
+        let mut right = Tile { m: right, id: 2 };
+        let mut below = Tile { m: below, id: 3 };
 
         assert!(fits_ab(&left, &below));
         rotate(&mut left);
@@ -237,62 +147,128 @@ mod tests {
     }
 }
 
-fn solve(
-    i: usize,
-    width: usize,
-    tiles: &mut [Tile],
-    avail: &mut [bool],
-    result: &mut [usize],
-    fit_memo: &mut HashMap<String, bool>,
-) -> bool {
-    if i == tiles.len() {
-        return true;
-    }
-    for t in 0..tiles.len() {
-        if !avail[t] {
-            continue;
-        }
-        avail[t] = false;
-        for k in 0..8 {
-            if k == 4 {
-                flip(&mut tiles[t]);
-            }
-            rotate(&mut tiles[t]);
-            if fits(width, tiles, t, i, result, fit_memo) {
-                result[i] = t;
-                if solve(i + 1, width, tiles, avail, result, fit_memo) {
-                    return true;
-                }
-                result[i] = tiles.len();
-            }
-        }
-        avail[t] = true;
-    }
-    false
+fn corner_product(result: &[TileSpec], width: usize) -> u64 {
+    result[0].id as u64
+        * result[width - 1].id as u64
+        * result[result.len() - width].id as u64
+        * result[result.len() - 1].id as u64
 }
 
-fn corner_product(tiles: &[Tile], result: &[usize], width: usize) -> u64 {
-    tiles[result[0]].id as u64
-        * tiles[result[width - 1]].id as u64
-        * tiles[result[result.len() - width]].id as u64
-        * tiles[result[result.len() - 1]].id as u64
+#[derive(Debug, Clone)]
+struct TileSpec {
+    id: usize,
+    top: String,
+    right: String,
+    bottom: String,
+    left: String,
+    rot: usize,
+    flipped: bool,
+}
+
+impl TileSpec {
+    fn flip(&self) -> Self {
+        Self {
+            id: self.id,
+            right: self.left.clone(),
+            left: self.right.clone(),
+            top: self.top.chars().rev().collect(),
+            bottom: self.bottom.chars().rev().collect(),
+            flipped: !self.flipped,
+            rot: self.rot,
+        }
+    }
+
+    fn rotate(&self) -> Self {
+        Self {
+            id: self.id,
+            right: self.top.clone(),
+            bottom: self.right.chars().rev().collect(),
+            left: self.bottom.clone(),
+            top: self.left.chars().rev().collect(),
+            rot: (self.rot + 1) % 4,
+            flipped: self.flipped,
+        }
+    }
+}
+
+fn make_specs(tiles: &[Tile]) -> Vec<TileSpec> {
+    tiles
+        .iter()
+        .map(|tile| {
+            let n = tile.m.len();
+            TileSpec {
+                id: tile.id,
+                top: tile.m[0].iter().collect(),
+                right: (0..n).map(|i| &tile.m[i][n - 1]).collect(),
+                bottom: tile.m[n - 1].iter().collect(),
+                left: (0..n).map(|i| &tile.m[i][0]).collect(),
+                rot: 0,
+                flipped: false,
+            }
+        })
+        .collect()
+}
+
+fn fits(
+    pos: usize,
+    spec: &TileSpec,
+    result: &[TileSpec],
+    width: usize,
+) -> bool {
+    if pos >= width {
+        // check above
+        if spec.top != result[pos - width].bottom {
+            return false;
+        }
+    }
+    if pos % width > 0 {
+        // check left
+        if spec.left != result[pos - 1].right {
+            return false;
+        }
+    }
+    true
+}
+
+fn solve(
+    pos: usize,
+    width: usize,
+    specs: &[TileSpec],
+    used: &[bool],
+    result: &Vec<TileSpec>,
+) -> Option<Vec<TileSpec>> {
+    if result.len() == specs.len() {
+        return Some(result.clone());
+    }
+    for i in (0..specs.len()).filter(|i| !used[*i]) {
+        let mut used: Vec<_> = used.iter().copied().collect();
+        used[i] = true;
+        let mut spec = specs[i].clone();
+        for j in 0..8 {
+            if j == 4 {
+                spec = spec.flip();
+            }
+            spec = spec.rotate();
+            let mut result = result.clone();
+            if !fits(pos, &spec, &result, width) {
+                continue;
+            }
+            result.push(spec.clone());
+            if let Some(v) = solve(pos + 1, width, specs, &used, &result) {
+                return Some(v.clone());
+            }
+        }
+    }
+    None
 }
 
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-    let mut tiles = parse_tiles(&text);
+    let tiles = parse_tiles(&text);
     let width = (tiles.len() as f64).sqrt() as usize;
-    let mut result = vec![tiles.len(); tiles.len()];
-    let mut avail = vec![true; tiles.len()];
-    let mut fit_memo = HashMap::new();
-    assert!(solve(
-        0,
-        width,
-        &mut tiles,
-        &mut avail,
-        &mut result,
-        &mut fit_memo
-    ));
-    println!("{}", corner_product(&tiles, &result, width));
+    let specs = make_specs(&tiles);
+    let n = specs.len();
+    let result = solve(0, width, &specs, &vec![false; n], &vec![]).unwrap();
+    println!("{}", corner_product(&result, width));
 }
