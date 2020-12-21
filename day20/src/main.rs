@@ -207,11 +207,36 @@ fn make_image(grids_per_side: usize, grids: &[Grid]) -> Grid {
     grid
 }
 
-fn print_grid(grid: &Grid) {
-    for line in grid {
-        let s: String = line.iter().collect();
-        println!("{}", s);
+const SEA_MONSTER: &[&'static str] = &[
+    "                  # ",
+    "#    ##    ##    ###",
+    " #  #  #  #  #  #   ",
+];
+
+fn has_sea_monster(img: &Grid, row: usize, col: usize) -> bool {
+    if row + SEA_MONSTER.len() >= img.len() {
+        return false;
     }
+    if col + SEA_MONSTER[0].len() >= img[0].len() {
+        return false;
+    }
+    for (i, line) in SEA_MONSTER.iter().enumerate() {
+        for (j, ch) in line.chars().enumerate() {
+            if ch == '#' && img[row + i][col + j] != '#' {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+type Pt2 = (usize, usize);
+
+fn find_sea_monsters(img: &Grid) -> Vec<Pt2> {
+    (0..img.len())
+        .flat_map(|row| (0..img.len()).map(move |col| (row, col)))
+        .filter(|(row, col)| has_sea_monster(img, *row, *col))
+        .collect()
 }
 
 fn main() {
@@ -228,7 +253,26 @@ fn main() {
     let grids = grids_for_specs(&tiles, &result);
     let grids: Vec<_> = grids.iter().map(remove_borders).collect();
     let mut img = make_image(width, &grids);
-    img = rotate(&img);
-    img = flip(&img);
-    print_grid(&img);
+
+    let mut sea_monster_positions = vec![];
+    for r in 0..8 {
+        if r == 4 {
+            img = flip(&img);
+        }
+        img = rotate(&img);
+        sea_monster_positions = find_sea_monsters(&img);
+        if !sea_monster_positions.is_empty() {
+            break;
+        }
+    }
+    let hashes: usize = img
+        .iter()
+        .map(|row| row.iter().filter(|ch| **ch == '#').count())
+        .sum();
+    let sea_monster_size: usize = SEA_MONSTER
+        .iter()
+        .map(|line| line.chars().filter(|ch| *ch == '#').count())
+        .sum();
+    let infested = sea_monster_positions.len() * sea_monster_size;
+    println!("{}", hashes - infested);
 }
