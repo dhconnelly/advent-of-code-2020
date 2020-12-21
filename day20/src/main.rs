@@ -1,5 +1,22 @@
 type Grid = Vec<Vec<char>>;
 
+fn flip(grid: &Grid) -> Grid {
+    grid.iter()
+        .map(|row| row.iter().rev().copied().collect())
+        .collect()
+}
+
+fn rotate(grid: &Grid) -> Grid {
+    let mut rotated = grid.clone();
+    let n = grid.len();
+    for row in 0..n {
+        for col in 0..n {
+            rotated[col][n - row - 1] = grid[row][col];
+        }
+    }
+    rotated
+}
+
 #[derive(Clone)]
 struct Tile {
     id: usize,
@@ -29,122 +46,6 @@ fn parse_tiles(s: &str) -> Vec<Tile> {
             Tile { id, m }
         })
         .collect()
-}
-
-fn rotate(tile: &mut Tile) {
-    let mut tile1 = tile.clone();
-    for row in 0..tile.m.len() {
-        let width = tile.m[row].len();
-        for col in 0..width {
-            tile1.m[row][col] = tile.m[col][width - row - 1];
-        }
-    }
-    *tile = tile1;
-}
-
-fn flip(tile: &mut Tile) {
-    for row in 0..tile.m.len() {
-        let width = tile.m[row].len();
-        for col in 0..width / 2 {
-            let tmp = tile.m[row][col];
-            tile.m[row][col] = tile.m[row][width - col - 1];
-            tile.m[row][width - col - 1] = tmp;
-        }
-    }
-}
-
-fn fits_lr(left: &Tile, right: &Tile) -> bool {
-    for row in 0..left.m.len() {
-        if left.m[row][left.m[row].len() - 1] != right.m[row][0] {
-            return false;
-        }
-    }
-    true
-}
-
-fn fits_ab(above: &Tile, below: &Tile) -> bool {
-    for col in 0..above.m[0].len() {
-        if below.m[0][col] != above.m[above.m.len() - 1][col] {
-            return false;
-        }
-    }
-    true
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_fits() {
-        let left = parse_grid(
-            &"#...##.#..
-              ..#.#..#.# 
-              .###....#.
-              ###.##.##.
-              .###.#####
-              .##.#....#
-              #...######
-              .....#..##
-              #.####...#
-              #.##...##.",
-        );
-
-        let right = parse_grid(
-            &"..###..### 
-              ###...#.#. 
-              ..#....#.. 
-              .#.#.#..## 
-              ##...#.### 
-              ##.##.###. 
-              ####.#...# 
-              #...##..#. 
-              ##..#..... 
-              ..##.#..#.",
-        );
-
-        let below = parse_grid(
-            &"#.##...##. 
-              ##..#.##.. 
-              ##.####... 
-              ####.#.#.. 
-              .#.####... 
-              .##..##.#. 
-              ....#..#.# 
-              ..#.#..... 
-              ####.#.... 
-              ...#.#.#.#",
-        );
-
-        let mut left = Tile { m: left, id: 1 };
-        let mut right = Tile { m: right, id: 2 };
-        let mut below = Tile { m: below, id: 3 };
-
-        assert!(fits_ab(&left, &below));
-        rotate(&mut left);
-        rotate(&mut left);
-        rotate(&mut below);
-        rotate(&mut below);
-        assert!(fits_ab(&below, &left));
-
-        rotate(&mut left);
-        rotate(&mut left);
-        assert!(fits_lr(&left, &right));
-        rotate(&mut left);
-        rotate(&mut right);
-        assert!(fits_ab(&right, &left));
-        rotate(&mut left);
-        rotate(&mut right);
-        assert!(fits_lr(&right, &left));
-        rotate(&mut left);
-        rotate(&mut right);
-        assert!(fits_ab(&left, &right));
-        rotate(&mut left);
-        rotate(&mut right);
-        assert!(fits_lr(&left, &right));
-        flip(&mut left);
-        flip(&mut right);
-        assert!(fits_lr(&right, &left));
-    }
 }
 
 fn corner_product(result: &[TileSpec], width: usize) -> u64 {
@@ -262,13 +163,72 @@ fn solve(
     None
 }
 
+fn grids_for_specs(tiles: &[Tile], specs: &[TileSpec]) -> Vec<Grid> {
+    let tiles_per_id: std::collections::HashMap<usize, &Tile> =
+        tiles.iter().map(|tile| (tile.id, tile)).collect();
+    specs
+        .iter()
+        .map(|spec| {
+            let mut grid = tiles_per_id[&spec.id].m.clone();
+            if spec.flipped {
+                grid = flip(&grid);
+            }
+            for _ in 0..spec.rot {
+                grid = rotate(&grid);
+            }
+            grid
+        })
+        .collect()
+}
+
+fn remove_borders(grid: &Grid) -> Grid {
+    let mut grid1 = vec![];
+    for row in 1..grid.len() - 1 {
+        grid1.push(vec![]);
+        for col in 1..grid[row].len() - 1 {
+            grid1[row - 1].push(grid[row][col]);
+        }
+    }
+    grid1
+}
+
+fn make_image(grids_per_side: usize, grids: &[Grid]) -> Grid {
+    let mut grid = vec![];
+    let tiles_per_grid = grids[0].len();
+    for chunk in grids.chunks(grids_per_side) {
+        for row in 0..tiles_per_grid {
+            let mut line = Vec::new();
+            for grid in chunk {
+                line.extend(grid[row].clone());
+            }
+            grid.push(line);
+        }
+    }
+    grid
+}
+
+fn print_grid(grid: &Grid) {
+    for line in grid {
+        let s: String = line.iter().collect();
+        println!("{}", s);
+    }
+}
+
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     let tiles = parse_tiles(&text);
+
     let width = (tiles.len() as f64).sqrt() as usize;
     let specs = make_specs(&tiles);
     let n = specs.len();
     let result = solve(0, width, &specs, &vec![false; n], &vec![]).unwrap();
     println!("{}", corner_product(&result, width));
+
+    let grids = grids_for_specs(&tiles, &result);
+    let grids: Vec<_> = grids.iter().map(remove_borders).collect();
+    let mut img = make_image(width, &grids);
+    img = rotate(&img);
+    img = flip(&img);
+    print_grid(&img);
 }
