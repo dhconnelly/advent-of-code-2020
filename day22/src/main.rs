@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 
@@ -78,12 +77,11 @@ enum Winner {
     Player2,
 }
 
-fn play_recursive(
-    mut p1: &mut Deck,
-    mut p2: &mut Deck,
-    //mut memo: &mut HashMap<String, Winner>,
-) -> Winner {
-    //println!("{:?} {:?}", p1, p2);
+fn take(v: &VecDeque<u64>, n: u64) -> VecDeque<u64> {
+    v.clone().iter().take(n as usize).copied().collect()
+}
+
+fn play_recursive(mut p1: &mut Deck, mut p2: &mut Deck) -> Winner {
     let mut seen = HashSet::new();
     while !p1.is_empty() && !p2.is_empty() {
         let k = key(p1, p2);
@@ -93,28 +91,9 @@ fn play_recursive(
         seen.insert(k);
         play_round(&mut p1, &mut p2, |p1, p2, f1, f2| {
             if p1.len() as u64 >= f1 && p2.len() as u64 >= f2 {
-                //let k1 = key(p1, p2);
-                //if let Some(result) = memo.get(&k1) {
-                ////println!("cache hit: {}", k1);
-                //*result
-                //} else {
-                let result = play_recursive(
-                    &mut p1
-                        .clone()
-                        .iter()
-                        .take(f1 as usize)
-                        .copied()
-                        .collect(),
-                    &mut p2
-                        .clone()
-                        .iter()
-                        .take(f2 as usize)
-                        .copied()
-                        .collect(), //&mut memo,
-                );
-                //memo.insert(k1, result);
+                let result =
+                    play_recursive(&mut take(p1, f1), &mut take(p2, f2));
                 result
-            //}
             } else if f1 > f2 {
                 Winner::Player1
             } else {
@@ -134,11 +113,11 @@ fn main() {
     let text = std::fs::read_to_string(&path).unwrap();
     let (deck1, deck2) = read_decks(&text);
 
-    //let (mut p1, mut p2) = (deck1.clone(), deck2.clone());
-    //play(&mut p1, &mut p2);
-    //println!("{}", score(&p1, &p2));
+    let (mut p1, mut p2) = (deck1.clone(), deck2.clone());
+    play(&mut p1, &mut p2);
+    println!("{}", score(&p1, &p2));
 
     let (mut p1, mut p2) = (deck1.clone(), deck2.clone());
-    play_recursive(&mut p1, &mut p2 /*&mut HashMap::new()*/);
+    play_recursive(&mut p1, &mut p2);
     println!("{}", score(&p1, &p2));
 }
