@@ -33,15 +33,18 @@ fn play(v: &mut Vec<usize>, cur_index: usize) -> usize {
     for cup in &remove {
         tmp.push(*cup);
     }
+    let mut new_cur_index = 0;
     for k in 0..v.len() - 1 {
         let i = (dest_index + k + 1) % v.len();
         if remove.contains(&v[i]) {
-            // do this faster
+            // do this faster? it's always just three elements though
             continue;
+        }
+        if v[i] == v[cur_index] {
+            new_cur_index = tmp.len();
         }
         tmp.push(v[i]);
     }
-    let new_cur_index = tmp.iter().position(|x| *x == v[cur_index]).unwrap();
     *v = tmp;
     (new_cur_index + 1) % v.len()
 }
