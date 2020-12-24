@@ -49,16 +49,20 @@ fn play(v: &mut Vec<usize>, cur_index: usize) -> usize {
     (new_cur_index + 1) % v.len()
 }
 
+fn play_n(v: &[usize], n: usize) -> Vec<usize> {
+    let mut v = v.iter().copied().collect();
+    let mut start = 0;
+    for _ in 0..n {
+        start = play(&mut v, start);
+    }
+    v
+}
+
 fn main() {
     let path = std::env::args().nth(1).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-
-    let mut v: Vec<_> =
-        text.lines().next().unwrap().chars().map(atoi).collect();
-    let mut start = 0;
-    for _ in 0..100 {
-        start = play(&mut v, start);
-    }
+    let v: Vec<_> = text.lines().next().unwrap().chars().map(atoi).collect();
+    let v = play_n(&v, 100);
 
     let pos1 = v.iter().position(|x| *x == 1).unwrap();
     let from1: Vec<_> =
