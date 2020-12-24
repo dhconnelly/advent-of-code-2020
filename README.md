@@ -1,17 +1,17 @@
 # advent-of-code-2020
 
-Each day's solution and input is in its own folder. To compute the solution
-for dayN, do:
+Each day's solution and input is in its own folder. To compute the
+solution for dayN, do:
 
 	cd dayN
 	cargo run input.txt
 
-Any day's solution that requires special instructions will contain its own
-readme file.
+Any day's solution that requires special instructions will contain
+its own readme file.
 
 ## Status
 
-Updated 16 December 2020
+Updated 24 December 2020
 
 - Day 1: both parts complete
 - Day 2: both parts complete
@@ -29,5 +29,13 @@ Updated 16 December 2020
 - Day 14: both parts complete
 - Day 15: both parts complete
 - Day 16: both parts complete
+- Day 17: both parts complete
+- Day 18: both parts complete
+- Day 19: both parts complete
+- Day 20: both parts complete
+- Day 22: both parts complete
+- Day 22: both parts complete
+- Day 23: both parts complete
+- Day 24: both parts complete
 
 ... remaining days not yet released
