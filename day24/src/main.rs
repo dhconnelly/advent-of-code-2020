@@ -15,10 +15,6 @@ fn add(p: &Pt2, q: &Pt2) -> Pt2 {
     (p.0 + q.0, p.1 + q.1)
 }
 
-fn zero() -> Pt2 {
-    (0, 0)
-}
-
 fn nbrs(p: Pt2) -> impl Iterator<Item = Pt2> {
     (0..DIRS.len()).map(move |i| add(&p, &DIRS[i]))
 }
@@ -47,7 +43,7 @@ fn parse_path(s: &str) -> Vec<Pt2> {
 }
 
 fn walk_path(path: Vec<Pt2>) -> Pt2 {
-    let mut p = zero();
+    let mut p = (0, 0);
     for q in path {
         p = add(&p, &q);
     }
@@ -62,31 +58,28 @@ fn flip_tiles(ps: impl Iterator<Item = Pt2>) -> HashMap<Pt2, bool> {
     m
 }
 
-fn next_state(m: &HashMap<Pt2, bool>, nbrs: &[Pt2], p: &Pt2) -> bool {
-    let v1 = *m.get(p).unwrap_or(&false);
-    let n = nbrs.iter().filter(|q| *m.get(q).unwrap_or(&false)).count();
-    match (v1, n) {
+fn next_state(
+    m: &HashMap<Pt2, bool>,
+    nbrs: impl Iterator<Item = Pt2>,
+    p: &Pt2,
+) -> bool {
+    let v = *m.get(p).unwrap_or(&false);
+    let n = nbrs.filter(|q| *m.get(q).unwrap_or(&false)).count();
+    match (v, n) {
         (true, n) if n == 0 || n > 2 => false,
         (false, 2) => true,
-        _ => v1,
+        _ => v,
     }
 }
 
 fn step(m1: &mut HashMap<Pt2, bool>) -> HashMap<Pt2, bool> {
     let mut m2 = HashMap::new();
-    let mut extra = vec![];
     for p in m1.keys() {
-        let v: Vec<_> = nbrs(*p).collect();
-        m2.insert(*p, next_state(&m1, &v, p));
-        for q in v {
-            if !m1.contains_key(&q) {
-                extra.push(q);
-            }
+        let qs: Vec<_> = nbrs(*p).collect();
+        m2.insert(*p, next_state(&m1, qs.iter().copied(), p));
+        for q in qs.iter().filter(|q| !m1.contains_key(q)) {
+            m2.insert(*q, next_state(&m1, nbrs(*q), &q));
         }
-    }
-    for p in extra {
-        let v: Vec<_> = nbrs(p).collect();
-        m2.insert(p, next_state(&m1, &v, &p));
     }
     m2
 }
@@ -96,13 +89,11 @@ fn main() {
     let text = std::fs::read_to_string(&path).unwrap();
     let paths = text.lines().map(parse_path);
     let pts = paths.map(walk_path);
-    let m = flip_tiles(pts);
+    let mut m = flip_tiles(pts);
     println!("{}", m.values().filter(|x| **x).count());
 
-    let mut m = m;
-    for i in 1..=100 {
+    for _ in 1..=100 {
         m = step(&mut m);
-        println!("day {}: {}", i, m.values().filter(|x| **x).count());
     }
     println!("{}", m.values().filter(|x| **x).count());
 }
